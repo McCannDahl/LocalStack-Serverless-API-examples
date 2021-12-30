@@ -1,0 +1,66 @@
+
+service: apidynamo
+plugins:
+ - serverless-localstack
+custom:
+  localstack:
+    debug: true
+    stages:
+      - local
+      - dev
+    endpointFile: my_endpoints.json
+
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  environment:
+    TABLE_NAME:
+      Ref: myTable
+  iam:
+    role:
+      name: dynamo-iam-role-${sls:stage}
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:DescribeTable
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - "Fn::GetAtt": [myTable, Arn]
+
+
+functions:
+  createAnimal:
+    handler: handler.create
+    events:
+      - http:
+          method: post
+          path: /animals
+  getAnimals:
+    handler: handler.list
+    events:
+      - http:
+          method: get
+          path: /animals
+
+resources:
+  Resources:
+    myTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: myTable
+        AttributeDefinitions:
+          - AttributeName: name
+            AttributeType: S
+        KeySchema:
+          - AttributeName: name
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
